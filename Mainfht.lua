@@ -576,4 +576,458 @@ function initializeMenu()
         tabBtn.Position = UDim2.new(0, 10, 0, 10 + (i-1) * 50)
         tabBtn.Size = UDim2.new(1, -20, 0, 40)
         tabBtn.Font = Enum.Font.GothamBold
-        tabBtn.Text = tab.icon .
+        tabBtn.Text = tab.icon .. " " .. tab.name
+        tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        tabBtn.TextSize = 14
+        
+        local tabBtnCorner = Instance.new("UICorner")
+        tabBtnCorner.CornerRadius = UDim.new(0, 8)
+        tabBtnCorner.Parent = tabBtn
+        
+        -- Tab Frame
+        local tabFrame = Instance.new("ScrollingFrame")
+        tabFrame.Name = tab.name .. "Frame"
+        tabFrame.Parent = contentContainer
+        tabFrame.BackgroundTransparency = 1
+        tabFrame.BorderSizePixel = 0
+        tabFrame.Size = UDim2.new(1, 0, 1, 0)
+        tabFrame.ScrollBarThickness = 8
+        tabFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 200, 255)
+        tabFrame.CanvasSize = UDim2.new(0, 0, 2, 0)
+        tabFrame.Visible = (i == 1)
+        
+        tabFrames[tab.name] = tabFrame
+        
+        -- Tab button click event
+        tabBtn.MouseButton1Click:Connect(function()
+            -- Hide all tabs
+            for _, frame in pairs(tabFrames) do
+                frame.Visible = false
+            end
+            -- Hide all tab buttons
+            for _, child in pairs(tabButtons:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+                end
+            end
+            -- Show selected tab
+            tabFrame.Visible = true
+            tabBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+        end)
+    end
+    
+    -- Movement Tab Content
+    createToggle(tabFrames.Movement, "🚀 Fly", UDim2.new(0, 20, 0, 20), toggleFly)
+    createToggle(tabFrames.Movement, "⭐ Float", UDim2.new(0, 250, 0, 20), toggleFloat)
+    createToggle(tabFrames.Movement, "👻 Noclip", UDim2.new(0, 20, 0, 80), toggleNoclip)
+    createToggle(tabFrames.Movement, "🏃 Speed Boost", UDim2.new(0, 250, 0, 80), function(enabled)
+        setWalkSpeed(enabled and 50 or 16)
+    end)
+    createToggle(tabFrames.Movement, "🦘 Jump Boost", UDim2.new(0, 20, 0, 140), function(enabled)
+        setJumpPower(enabled and 100 or 50)
+    end)
+    createToggle(tabFrames.Movement, "🌪️ Infinite Jump", UDim2.new(0, 250, 0, 140), function(enabled)
+        if enabled then
+            connections.infJump = UserInputService.JumpRequest:Connect(function()
+                Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end)
+        else
+            if connections.infJump then
+                connections.infJump:Disconnect()
+            end
+        end
+    end)
+    
+    -- Visual Tab Content
+    createToggle(tabFrames.Visual, "📹 FreeCam (Static)", UDim2.new(0, 20, 0, 20), toggleFreeCam1)
+    createToggle(tabFrames.Visual, "🎥 FreeCam (Flying)", UDim2.new(0, 250, 0, 20), toggleFreeCam2)
+    createToggle(tabFrames.Visual, "🌟 Fullbright", UDim2.new(0, 20, 0, 80), function(enabled)
+        if enabled then
+            Lighting.Brightness = 2
+            Lighting.ClockTime = 14
+            Lighting.FogEnd = 100000
+            Lighting.GlobalShadows = false
+        else
+            Lighting.Brightness = 1
+            Lighting.ClockTime = 12
+            Lighting.FogEnd = 100000
+            Lighting.GlobalShadows = true
+        end
+    end)
+    createToggle(tabFrames.Visual, "🔍 ESP Players", UDim2.new(0, 250, 0, 80), function(enabled)
+        if enabled then
+            states.esp = true
+            connections.esp = {}
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= Player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Parent = player.Character
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                    table.insert(connections.esp, highlight)
+                end
+            end
+            
+            -- Handle new players joining
+            connections.espPlayerAdded = Players.PlayerAdded:Connect(function(player)
+                player.CharacterAdded:Connect(function(character)
+                    wait(1)
+                    if states.esp and character:FindFirstChild("HumanoidRootPart") then
+                        local highlight = Instance.new("Highlight")
+                        highlight.Parent = character
+                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        highlight.FillTransparency = 0.5
+                        highlight.OutlineTransparency = 0
+                        table.insert(connections.esp, highlight)
+                    end
+                end)
+            end)
+        else
+            states.esp = false
+            if connections.esp then
+                for _, highlight in pairs(connections.esp) do
+                    if highlight then highlight:Destroy() end
+                end
+                connections.esp = nil
+            end
+            if connections.espPlayerAdded then
+                connections.espPlayerAdded:Disconnect()
+            end
+        end
+    end)
+    createToggle(tabFrames.Visual, "🎯 Aimbot", UDim2.new(0, 20, 0, 140), function(enabled)
+        if enabled then
+            connections.aimbot = RunService.Heartbeat:Connect(function()
+                local target = nil
+                local shortestDistance = math.huge
+                
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= Player and player.Character and player.Character:FindFirstChild("Head") then
+                        local distance = (player.Character.Head.Position - RootPart.Position).Magnitude
+                        if distance < shortestDistance then
+                            shortestDistance = distance
+                            target = player
+                        end
+                    end
+                end
+                
+                if target and target.Character:FindFirstChild("Head") then
+                    Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, target.Character.Head.Position)
+                end
+            end)
+        else
+            if connections.aimbot then
+                connections.aimbot:Disconnect()
+            end
+        end
+    end)
+    createToggle(tabFrames.Visual, "🌈 Rainbow Character", UDim2.new(0, 250, 0, 140), function(enabled)
+        if enabled then
+            connections.rainbow = RunService.Heartbeat:Connect(function()
+                local hue = (tick() * 0.5) % 1
+                local color = Color3.fromHSV(hue, 1, 1)
+                for _, part in pairs(Character:GetChildren()) do
+                    if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                        part.Color = color
+                    end
+                end
+            end)
+        else
+            if connections.rainbow then
+                connections.rainbow:Disconnect()
+            end
+            -- Reset colors to default
+            for _, part in pairs(Character:GetChildren()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.Color = Color3.fromRGB(255, 184, 148)
+                end
+            end
+        end
+    end)
+    createToggle(tabFrames.Visual, "⭐ Chams", UDim2.new(0, 20, 0, 200), function(enabled)
+        if enabled then
+            for _, part in pairs(Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Material = Enum.Material.ForceField
+                end
+            end
+        else
+            for _, part in pairs(Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Material = Enum.Material.Plastic
+                end
+            end
+        end
+    end)
+    createToggle(tabFrames.Visual, "🌙 X-Ray Vision", UDim2.new(0, 250, 0, 200), function(enabled)
+        if enabled then
+            connections.xray = RunService.Heartbeat:Connect(function()
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") and not obj.Parent:FindFirstChild("Humanoid") then
+                        obj.Transparency = 0.8
+                    end
+                end
+            end)
+        else
+            if connections.xray then
+                connections.xray:Disconnect()
+            end
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and not obj.Parent:FindFirstChild("Humanoid") then
+                    obj.Transparency = 0
+                end
+            end
+        end
+    end)
+    
+    -- World Tab Content
+    createToggle(tabFrames.World, "❄️ Anti-Lag", UDim2.new(0, 20, 0, 20), function(enabled)
+        if enabled then
+            states.antilag = true
+            connections.antilag = RunService.Heartbeat:Connect(function()
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Explosion") or obj:IsA("Sparkles") then
+                        obj:Destroy()
+                    end
+                end
+            end)
+        else
+            states.antilag = false
+            if connections.antilag then
+                connections.antilag:Disconnect()
+            end
+        end
+    end)
+    createToggle(tabFrames.World, "🔧 Click Teleport", UDim2.new(0, 250, 0, 20), function(enabled)
+        if enabled then
+            connections.clicktp = UserInputService.Button1Down:Connect(function()
+                local mouse = Player:GetMouse()
+                if mouse.Target then
+                    RootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 5, 0))
+                end
+            end)
+        else
+            if connections.clicktp then
+                connections.clicktp:Disconnect()
+            end
+        end
+    end)
+    createToggle(tabFrames.World, "🌊 Walk on Water", UDim2.new(0, 20, 0, 80), function(enabled)
+        if enabled then
+            connections.walkwater = RunService.Heartbeat:Connect(function()
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj.Name == "Water" and obj:IsA("BasePart") then
+                        obj.CanCollide = true
+                    end
+                end
+            end)
+        else
+            if connections.walkwater then
+                connections.walkwater:Disconnect()
+            end
+        end
+    end)
+    createToggle(tabFrames.World, "🌍 Remove Barriers", UDim2.new(0, 250, 0, 80), function(enabled)
+        if enabled then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and (obj.Name:lower():find("barrier") or obj.Name:lower():find("wall") or obj.Name:lower():find("invisible")) then
+                    obj:Destroy()
+                end
+            end
+        end
+    end)
+    createToggle(tabFrames.World, "⚡ Kill Aura", UDim2.new(0, 20, 0, 140), function(enabled)
+        if enabled then
+            connections.killaura = RunService.Heartbeat:Connect(function()
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= Player and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local distance = (player.Character.HumanoidRootPart.Position - RootPart.Position).Magnitude
+                        if distance < 20 then
+                            player.Character.Humanoid.Health = 0
+                        end
+                    end
+                end
+            end)
+        else
+            if connections.killaura then
+                connections.killaura:Disconnect()
+            end
+        end
+    end)
+    createToggle(tabFrames.World, "🔥 Destroy Map", UDim2.new(0, 250, 0, 140), function(enabled)
+        if enabled then
+            for _, obj in pairs(workspace:GetChildren()) do
+                if obj ~= workspace.CurrentCamera and obj.Name ~= "Baseplate" and not Players:GetPlayerFromCharacter(obj) then
+                    obj:Destroy()
+                end
+            end
+        end
+    end)
+    createToggle(tabFrames.World, "🌪️ Tornado", UDim2.new(0, 20, 0, 200), function(enabled)
+        if enabled then
+            connections.tornado = RunService.Heartbeat:Connect(function()
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") and obj.Parent ~= Character and not obj.Anchored then
+                        local bodyVelocity = obj:FindFirstChild("TornadoForce") or Instance.new("BodyVelocity")
+                        bodyVelocity.Name = "TornadoForce"
+                        bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+                        bodyVelocity.Velocity = Vector3.new(math.random(-50, 50), math.random(10, 50), math.random(-50, 50))
+                        bodyVelocity.Parent = obj
+                    end
+                end
+            end)
+        else
+            if connections.tornado then
+                connections.tornado:Disconnect()
+            end
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BodyVelocity") and obj.Name == "TornadoForce" then
+                    obj:Destroy()
+                end
+            end
+        end
+    end)
+    
+-- Player Tab Content
+    createToggle(tabFrames.Player, "😈 Godmode", UDim2.new(0, 20, 0, 20), function(enabled)
+        if enabled then
+            connections.godmode = RunService.Heartbeat:Connect(function()
+                Humanoid.Health = Humanoid.MaxHealth
+            end)
+        else
+            if connections.godmode then
+                connections.godmode:Disconnect()
+            end
+        end
+    end)
+    createToggle(tabFrames.Player, "👤 Invisible", UDim2.new(0, 250, 0, 20), function(enabled)
+        if enabled then
+            for _, part in pairs(Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 1
+                elseif part:IsA("Accessory") then
+                    part.Handle.Transparency = 1
+                end
+            end
+            Character.Head.face.Transparency = 1
+        else
+            for _, part in pairs(Character:GetChildren()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.Transparency = 0
+                elseif part:IsA("Accessory") then
+                    part.Handle.Transparency = 0
+                end
+            end
+            Character.Head.face.Transparency = 0
+        end
+    end)
+    createToggle(tabFrames.Player, "🏃‍♂️ Auto Sprint", UDim2.new(0, 20, 0, 80), function(enabled)
+        if enabled then
+            connections.autosprint = RunService.Heartbeat:Connect(function()
+                Humanoid.WalkSpeed = 24
+            end)
+        else
+            if connections.autosprint then
+                connections.autosprint:Disconnect()
+            end
+            Humanoid.WalkSpeed = 16
+        end
+    end)
+    createToggle(tabFrames.Player, "💪 Super Strength", UDim2.new(0, 250, 0, 80), function(enabled)
+        if enabled then
+            connections.strength = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                if gameProcessed then return end
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    local mouse = Player:GetMouse()
+                    if mouse.Target and mouse.Target.Parent:FindFirstChild("Humanoid") then
+                        mouse.Target.Parent.Humanoid.Health = 0
+                    end
+                end
+            end)
+        else
+            if connections.strength then
+                connections.strength:Disconnect()
+            end
+        end
+    end)
+    createToggle(tabFrames.Player, "🎭 Name Spoof", UDim2.new(0, 20, 0, 140), function(enabled)
+        if enabled then
+            Character.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+        else
+            Character.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+        end
+    end)
+    createToggle(tabFrames.Player, "🔄 Reset Character", UDim2.new(0, 250, 0, 140), function(enabled)
+        if enabled then
+            Character.Humanoid.Health = 0
+        end
+    end)
+    
+    -- Config Tab Content
+    local configFrame = Instance.new("Frame")
+    configFrame.Name = "ConfigFrame"
+    configFrame.Parent = tabFrames.Config
+    configFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    configFrame.BorderSizePixel = 0
+    configFrame.Position = UDim2.new(0, 20, 0, 20)
+    configFrame.Size = UDim2.new(1, -40, 0, 300)
+    
+    local configCorner = Instance.new("UICorner")
+    configCorner.CornerRadius = UDim.new(0, 10)
+    configCorner.Parent = configFrame
+    
+    local configTitle = Instance.new("TextLabel")
+    configTitle.Parent = configFrame
+    configTitle.BackgroundTransparency = 1
+    configTitle.Position = UDim2.new(0, 20, 0, 10)
+    configTitle.Size = UDim2.new(1, -40, 0, 30)
+    configTitle.Font = Enum.Font.GothamBold
+    configTitle.Text = "⚙️ Configuration Manager"
+    configTitle.TextColor3 = Color3.fromRGB(100, 200, 255)
+    configTitle.TextSize = 18
+    configTitle.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local configNameInput = Instance.new("TextBox")
+    configNameInput.Parent = configFrame
+    configNameInput.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    configNameInput.BorderSizePixel = 0
+    configNameInput.Position = UDim2.new(0, 20, 0, 60)
+    configNameInput.Size = UDim2.new(0, 200, 0, 35)
+    configNameInput.Font = Enum.Font.Gotham
+    configNameInput.PlaceholderText = "Config Name..."
+    configNameInput.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+    configNameInput.Text = ""
+    configNameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    configNameInput.TextSize = 14
+    
+    local inputCorner = Instance.new("UICorner")
+    inputCorner.CornerRadius = UDim.new(0, 8)
+    inputCorner.Parent = configNameInput
+    
+    local saveBtn = Instance.new("TextButton")
+    saveBtn.Parent = configFrame
+    saveBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 60)
+    saveBtn.BorderSizePixel = 0
+    saveBtn.Position = UDim2.new(0, 240, 0, 60)
+    saveBtn.Size = UDim2.new(0, 80, 0, 35)
+    saveBtn.Font = Enum.Font.GothamBold
+    saveBtn.Text = "SAVE"
+    saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    saveBtn.TextSize = 12
+    
+    local saveBtnCorner = Instance.new("UICorner")
+    saveBtnCorner.CornerRadius = UDim.new(0, 8)
+    saveBtnCorner.Parent = saveBtn
+    
+    local loadBtn = Instance.new("TextButton")
+    loadBtn.Parent = configFrame
+    loadBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+    loadBtn.BorderSizePixel = 0
+    loadBtn.Position = UDim2.new(0, 330, 0, 60)
+    loadBtn.Size = UDim2.new(0, 80, 0, 35)
+    loadBtn.Font = Enum.Font.GothamBold
+    loadBtn.Text = "LOAD"
+    loadBtn.T
