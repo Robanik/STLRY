@@ -1030,4 +1030,327 @@ function initializeMenu()
     loadBtn.Size = UDim2.new(0, 80, 0, 35)
     loadBtn.Font = Enum.Font.GothamBold
     loadBtn.Text = "LOAD"
-    loadBtn.T
+    loadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    loadBtn.TextSize = 12
+    
+    local loadBtnCorner = Instance.new("UICorner")
+    loadBtnCorner.CornerRadius = UDim.new(0, 8)
+    loadBtnCorner.Parent = loadBtn
+    
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Parent = configFrame
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Position = UDim2.new(0, 20, 0, 110)
+    statusLabel.Size = UDim2.new(1, -40, 0, 30)
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.Text = "Ready to save/load configurations"
+    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    statusLabel.TextSize = 14
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    -- Key System Info
+    local keyInfo = Instance.new("TextLabel")
+    keyInfo.Parent = configFrame
+    keyInfo.BackgroundTransparency = 1
+    keyInfo.Position = UDim2.new(0, 20, 0, 160)
+    keyInfo.Size = UDim2.new(1, -40, 0, 60)
+    keyInfo.Font = Enum.Font.Gotham
+    keyInfo.Text = "🔐 Key System Active\nCurrent Key: " .. CORRECT_KEY .. "\nChange key in script settings"
+    keyInfo.TextColor3 = Color3.fromRGB(100, 200, 255)
+    keyInfo.TextSize = 12
+    keyInfo.TextXAlignment = Enum.TextXAlignment.Left
+    keyInfo.TextYAlignment = Enum.TextYAlignment.Top
+    
+    -- Credits
+    local credits = Instance.new("TextLabel")
+    credits.Parent = configFrame
+    credits.BackgroundTransparency = 1
+    credits.Position = UDim2.new(0, 20, 0, 240)
+    credits.Size = UDim2.new(1, -40, 0, 50)
+    credits.Font = Enum.Font.GothamBold
+    credits.Text = "✨ BY ROBANIK | STEAL A BRAINROT ✨\n🚀 Advanced GUI System v2.0"
+    credits.TextColor3 = Color3.fromRGB(255, 200, 100)
+    credits.TextSize = 14
+    credits.TextXAlignment = Enum.TextXAlignment.Center
+    
+    -- Config Save/Load Functions
+    saveBtn.MouseButton1Click:Connect(function()
+        local configName = configNameInput.Text
+        if configName == "" then
+            statusLabel.Text = "❌ Please enter a config name"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        else
+            statusLabel.Text = "✅ Config '" .. configName .. "' saved successfully!"
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        end
+    end)
+    
+    loadBtn.MouseButton1Click:Connect(function()
+        local configName = configNameInput.Text
+        if configName == "" then
+            statusLabel.Text = "❌ Please enter a config name"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        else
+            statusLabel.Text = "✅ Config '" .. configName .. "' loaded successfully!"
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        end
+    end)
+    
+    -- GUI Controls
+    local isMinimized = false
+    
+    -- Minimize functionality
+    mainFrame:FindFirstChild("TitleBar").MinimizeButton.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        if isMinimized then
+            local tween = TweenService:Create(mainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 600, 0, 50)})
+            tween:Play()
+            tabContainer.Visible = false
+        else
+            local tween = TweenService:Create(mainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 600, 0, 500)})
+            tween:Play()
+            tween.Completed:Connect(function()
+                tabContainer.Visible = true
+            end)
+        end
+    end)
+    
+    -- Close functionality
+    mainFrame:FindFirstChild("TitleBar").CloseButton.MouseButton1Click:Connect(function()
+        -- Disconnect all connections
+        for _, connection in pairs(connections) do
+            if connection and connection.Disconnect then
+                connection:Disconnect()
+            end
+        end
+        ScreenGui:Destroy()
+    end)
+    
+    -- Dragging functionality
+    local dragging = false
+    local dragInput, mousePos, framePos
+    
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            mousePos = input.Position
+            framePos = mainFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    titleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - mousePos
+            mainFrame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- Start the script
+if keyEntered then
+    initializeMenu()
+else
+    createGUI()
+    createKeySystem()
+end
+
+-- Hotkey to toggle GUI (Insert key)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.Insert then
+        if ScreenGui then
+            ScreenGui.Enabled = not ScreenGui.Enabled
+        end
+    end
+end)
+
+-- Anti-Detection
+local mt = getrawmetatable(game)
+local oldnamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if method == "FireServer" or method == "InvokeServer" then
+        if string.find(tostring(self), "Anti") or string.find(tostring(self), "Detect") then
+            return wait(9e9)
+        end
+    end
+    
+    return oldnamecall(self, ...)
+end
+
+setreadonly(mt, true)
+
+-- Character respawn handler
+Player.CharacterAdded:Connect(function(newCharacter)
+    Character = newCharacter
+    Humanoid = Character:WaitForChild("Humanoid")
+    RootPart = Character:WaitForChild("HumanoidRootPart")
+    
+    -- Restore states after respawn
+    wait(1)
+    if states.fly then
+        toggleFly(true)
+    end
+    if states.noclip then
+        toggleNoclip(true)
+    end
+    if states.float then
+        toggleFloat(true)
+    end
+end)
+
+-- Cleanup function
+local function cleanup()
+    for _, connection in pairs(connections) do
+        if connection and typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
+    end
+    
+    -- Remove visual effects
+    for _, obj in pairs(workspace:GetChildren()) do
+        if obj.Name == "FloatParticle" or obj.Name == "FloatClone" then
+            obj:Destroy()
+        end
+    end
+    
+    -- Reset camera
+    Camera.CameraType = Enum.CameraType.Custom
+    
+    -- Reset character properties
+    if Character then
+        if Humanoid then
+            Humanoid.WalkSpeed = 16
+            Humanoid.JumpPower = 50
+        end
+        
+        for _, part in pairs(Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+                if part.Name ~= "HumanoidRootPart" then
+                    part.Transparency = 0
+                end
+                part.Material = Enum.Material.Plastic
+            end
+        end
+        
+        if Character:FindFirstChild("Head") and Character.Head:FindFirstChild("face") then
+            Character.Head.face.Transparency = 0
+        end
+    end
+    
+    -- Reset lighting
+    Lighting.Brightness = 1
+    Lighting.ClockTime = 12
+    Lighting.FogEnd = 100000
+    Lighting.GlobalShadows = true
+end
+
+-- Game close handler
+game:GetService("GuiService").ErrorMessageChanged:Connect(cleanup)
+
+-- Additional utility functions
+local function createNotification(title, text, duration)
+    duration = duration or 3
+    
+    local notifGui = Instance.new("ScreenGui")
+    notifGui.Name = "RobanikNotification"
+    notifGui.Parent = CoreGui
+    
+    local notifFrame = Instance.new("Frame")
+    notifFrame.Parent = notifGui
+    notifFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    notifFrame.BorderSizePixel = 0
+    notifFrame.Position = UDim2.new(1, -320, 0, 20)
+    notifFrame.Size = UDim2.new(0, 300, 0, 80)
+    
+    local notifCorner = Instance.new("UICorner")
+    notifCorner.CornerRadius = UDim.new(0, 10)
+    notifCorner.Parent = notifFrame
+    
+    local notifTitle = Instance.new("TextLabel")
+    notifTitle.Parent = notifFrame
+    notifTitle.BackgroundTransparency = 1
+    notifTitle.Position = UDim2.new(0, 15, 0, 5)
+    notifTitle.Size = UDim2.new(1, -30, 0, 25)
+    notifTitle.Font = Enum.Font.GothamBold
+    notifTitle.Text = title
+    notifTitle.TextColor3 = Color3.fromRGB(100, 200, 255)
+    notifTitle.TextSize = 16
+    notifTitle.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local notifText = Instance.new("TextLabel")
+    notifText.Parent = notifFrame
+    notifText.BackgroundTransparency = 1
+    notifText.Position = UDim2.new(0, 15, 0, 30)
+    notifText.Size = UDim2.new(1, -30, 0, 45)
+    notifText.Font = Enum.Font.Gotham
+    notifText.Text = text
+    notifText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    notifText.TextSize = 14
+    notifText.TextXAlignment = Enum.TextXAlignment.Left
+    notifText.TextWrapped = true
+    
+    -- Slide in animation
+    local slideIn = TweenService:Create(notifFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        Position = UDim2.new(1, -320, 0, 20)
+    })
+    
+    notifFrame.Position = UDim2.new(1, 0, 0, 20)
+    slideIn:Play()
+    
+    -- Auto remove after duration
+    game:GetService("Debris"):AddItem(notifGui, duration)
+    
+    -- Slide out animation before removal
+    wait(duration - 0.5)
+    local slideOut = TweenService:Create(notifFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+        Position = UDim2.new(1, 0, 0, 20)
+    })
+    slideOut:Play()
+end
+
+-- Welcome notification
+spawn(function()
+    wait(2)
+    if keyEntered then
+        createNotification("ROBANIK GUI", "Successfully loaded! Press INSERT to toggle.", 4)
+    end
+end)
+
+-- Performance monitor
+spawn(function()
+    while wait(5) do
+        if ScreenGui and ScreenGui.Parent then
+            local fps = workspace:GetRealPhysicsFPS()
+            if fps < 30 then
+                -- Auto-enable anti-lag if FPS is low
+                if not states.antilag then
+                    createNotification("Performance", "Low FPS detected. Consider enabling Anti-Lag.", 3)
+                end
+            end
+        end
+    end
+end)
+
+print("🚀 ROBANIK GUI LOADED SUCCESSFULLY!")
+print("📝 BY ROBANIK | STEAL A BRAINROT")
+print("🔑 Key: " .. CORRECT_KEY)
+print("⌨️ Press INSERT to toggle GUI")
+print("✨ Version: 2.0 Advanced")
